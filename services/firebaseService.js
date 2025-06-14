@@ -100,11 +100,10 @@ class FirebaseService {
       expiryDate.setDate(expiryDate.getDate() + duration);
       const expiryDateStr = expiryDate.toISOString().split('T')[0];
 
+      // username과 expires만 저장
       const subscriptionData = {
         username: username,
-        expires: expiryDateStr,
-        createdAt: new Date().toISOString(),
-        duration: duration
+        expires: expiryDateStr
       };
 
       await this.db.collection('subscriptions').doc(username).set(subscriptionData);
@@ -138,13 +137,13 @@ class FirebaseService {
       newExpiry.setDate(newExpiry.getDate() + duration);
       const newExpiryStr = newExpiry.toISOString().split('T')[0];
 
+      // username과 expires만 저장
       const updateData = {
-        expires: newExpiryStr,
-        renewedAt: new Date().toISOString(),
-        lastRenewalDuration: duration
+        username: username,
+        expires: newExpiryStr
       };
 
-      await docRef.update(updateData);
+      await docRef.set(updateData);  // update 대신 set 사용
 
       return { 
         message: "구독이 갱신되었습니다.", 
@@ -194,8 +193,7 @@ class FirebaseService {
         subscriptions.push({
           username: doc.id,
           expires: data.expires,
-          status: isExpired ? '만료' : '유효',
-          createdAt: data.createdAt || 'N/A'
+          status: isExpired ? '만료' : '유효'
         });
       });
 
@@ -244,27 +242,23 @@ class FirebaseService {
     }
   }
 
-  // 환경 변수 상태 확인 메서드
   checkEnvironmentVariables() {
     const requiredEnvVars = [
       'FIREBASE_PROJECT_ID',
-      'FIREBASE_PRIVATE_KEY_ID', 
+      'FIREBASE_PRIVATE_KEY_ID',
       'FIREBASE_PRIVATE_KEY',
       'FIREBASE_CLIENT_EMAIL',
       'FIREBASE_CLIENT_ID'
     ];
 
-    const missingVars = [];
-    for (const envVar of requiredEnvVars) {
-      if (!process.env[envVar]) {
-        missingVars.push(envVar);
-      }
+    const missingVars = requiredEnvVars.filter(envVar => !process.env[envVar]);
+    
+    if (missingVars.length > 0) {
+      logger.error(`Missing required environment variables: ${missingVars.join(', ')}`);
+      return false;
     }
-
-    return {
-      isValid: missingVars.length === 0,
-      missingVariables: missingVars
-    };
+    
+    return true;
   }
 }
 
