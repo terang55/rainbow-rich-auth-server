@@ -59,6 +59,10 @@ class FirebaseService {
     }
   }
 
+  // ========================================
+  // Rainbow Rich 프로그램 함수들
+  // ========================================
+
   async verifySubscription(username) {
     try {
       if (!this.initialized) {
@@ -175,6 +179,131 @@ class FirebaseService {
       return { message: "구독 취소 중 오류가 발생했습니다." };
     }
   }
+
+  // ========================================
+  // RainbowG 프로그램 전용 함수들
+  // ========================================
+
+  async verifySubscriptionRainbowG(username) {
+    try {
+      if (!this.initialized) {
+        throw new Error('Firebase service not initialized');
+      }
+
+      const docRef = this.db.collection('subscriptions_rainbowg').doc(username);
+      const doc = await docRef.get();
+
+      if (!doc.exists) {
+        return { message: "구독이 없습니다." };
+      }
+
+      const subscriptionInfo = doc.data();
+      const expiryDate = new Date(subscriptionInfo.expires);
+      const now = new Date();
+
+      if (now > expiryDate) {
+        return { message: "구독이 만료되었습니다." };
+      } else {
+        return { 
+          message: "구독이 유효합니다.", 
+          expires: subscriptionInfo.expires 
+        };
+      }
+    } catch (error) {
+      logger.error(`Error verifying RainbowG subscription for ${username}: ${error.message}`);
+      return { message: "구독 확인 중 오류가 발생했습니다." };
+    }
+  }
+
+  async subscribeRainbowG(username, duration) {
+    try {
+      if (!this.initialized) {
+        throw new Error('Firebase service not initialized');
+      }
+
+      const expiryDate = new Date();
+      expiryDate.setDate(expiryDate.getDate() + duration);
+      const expiryDateStr = expiryDate.toISOString().split('T')[0];
+
+      // username과 expires만 저장
+      const subscriptionData = {
+        username: username,
+        expires: expiryDateStr
+      };
+
+      await this.db.collection('subscriptions_rainbowg').doc(username).set(subscriptionData);
+      
+      return { 
+        message: "구독이 업데이트되었습니다.", 
+        expires: expiryDateStr 
+      };
+    } catch (error) {
+      logger.error(`Error creating RainbowG subscription for ${username}: ${error.message}`);
+      return { message: "구독 생성 중 오류가 발생했습니다." };
+    }
+  }
+
+  async renewSubscriptionRainbowG(username, duration) {
+    try {
+      if (!this.initialized) {
+        throw new Error('Firebase service not initialized');
+      }
+
+      const docRef = this.db.collection('subscriptions_rainbowg').doc(username);
+      const doc = await docRef.get();
+
+      if (!doc.exists) {
+        return { message: "갱신할 구독이 없습니다." };
+      }
+
+      const subscriptionInfo = doc.data();
+      const currentExpiry = new Date(subscriptionInfo.expires);
+      const newExpiry = new Date(currentExpiry);
+      newExpiry.setDate(newExpiry.getDate() + duration);
+      const newExpiryStr = newExpiry.toISOString().split('T')[0];
+
+      // username과 expires만 저장
+      const updateData = {
+        username: username,
+        expires: newExpiryStr
+      };
+
+      await docRef.set(updateData);
+
+      return { 
+        message: "구독이 갱신되었습니다.", 
+        expires: newExpiryStr 
+      };
+    } catch (error) {
+      logger.error(`Error renewing RainbowG subscription for ${username}: ${error.message}`);
+      return { message: "구독 갱신 중 오류가 발생했습니다." };
+    }
+  }
+
+  async cancelSubscriptionRainbowG(username) {
+    try {
+      if (!this.initialized) {
+        throw new Error('Firebase service not initialized');
+      }
+
+      const docRef = this.db.collection('subscriptions_rainbowg').doc(username);
+      const doc = await docRef.get();
+
+      if (!doc.exists) {
+        return { message: "취소할 구독이 없습니다." };
+      }
+
+      await docRef.delete();
+      return { message: "구독이 취소되었습니다." };
+    } catch (error) {
+      logger.error(`Error cancelling RainbowG subscription for ${username}: ${error.message}`);
+      return { message: "구독 취소 중 오류가 발생했습니다." };
+    }
+  }
+
+  // ========================================
+  // 공통 관리 함수들
+  // ========================================
 
   async getAllSubscriptions() {
     try {
