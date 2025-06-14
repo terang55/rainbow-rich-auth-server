@@ -91,7 +91,7 @@ app.post('/api/verify', async (req, res) => {
     
     logger.info(`Subscription verification for ${username}: ${result.message}`);
     
-    if (result.success) {
+    if (result.message === "구독이 유효합니다.") {
       res.json({
         success: true,
         message: '구독이 유효합니다.',
@@ -116,7 +116,7 @@ app.post('/api/verify', async (req, res) => {
 // 구독 생성 API (클라이언트용)
 app.post('/api/subscribe', async (req, res) => {
   try {
-    const { username, plan = 'basic' } = req.body;
+    const { username, plan = 'basic', days = 30 } = req.body;
     
     if (!username) {
       return res.status(400).json({
@@ -125,13 +125,13 @@ app.post('/api/subscribe', async (req, res) => {
       });
     }
 
-    // 기본 30일 구독 생성
-    const duration = plan === 'premium' ? 90 : 30;
+    // 클라이언트에서 전송한 days 값 사용
+    const duration = parseInt(days) || 30;
     const result = await firebaseService.subscribe(username, duration);
     
     logger.info(`Subscription created for ${username}: ${duration} days`);
     
-    if (result.success) {
+    if (result.message === "구독이 업데이트되었습니다.") {
       res.json({
         success: true,
         message: '구독이 성공적으로 생성되었습니다.',
@@ -156,7 +156,7 @@ app.post('/api/subscribe', async (req, res) => {
 // 구독 갱신 API (클라이언트용)
 app.post('/api/renew', async (req, res) => {
   try {
-    const { username } = req.body;
+    const { username, days = 30 } = req.body;
     
     if (!username) {
       return res.status(400).json({
@@ -165,12 +165,13 @@ app.post('/api/renew', async (req, res) => {
       });
     }
 
-    // 기본 30일 갱신
-    const result = await firebaseService.renewSubscription(username, 30);
+    // 클라이언트에서 전송한 days 값 사용
+    const duration = parseInt(days) || 30;
+    const result = await firebaseService.renewSubscription(username, duration);
     
-    logger.info(`Subscription renewed for ${username}: 30 days`);
+    logger.info(`Subscription renewed for ${username}: ${duration} days`);
     
-    if (result.success) {
+    if (result.message === "구독이 갱신되었습니다.") {
       res.json({
         success: true,
         message: '구독이 성공적으로 갱신되었습니다.',
@@ -208,7 +209,7 @@ app.post('/api/cancel', async (req, res) => {
     
     logger.info(`Subscription cancelled for ${username}`);
     
-    if (result.success) {
+    if (result.message === "구독이 취소되었습니다.") {
       res.json({
         success: true,
         message: '구독이 성공적으로 취소되었습니다.'
