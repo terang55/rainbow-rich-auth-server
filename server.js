@@ -64,6 +64,8 @@ app.get('/', (req, res) => {
       'POST /api/rainbowg/subscribe',
       'POST /api/rainbowg/renew',
       'POST /api/rainbowg/cancel',
+      'POST /api/admin/subscribe',
+      'POST /api/admin/rainbowg/subscribe',
       'GET /health'
     ]
   });
@@ -402,7 +404,7 @@ app.post('/api/rainbowg/cancel', async (req, res) => {
 // 관리자 API 엔드포인트
 // ========================================
 
-// 관리자 API - 구독 등록
+// 관리자 API - Rainbow Rich 구독 등록
 app.post('/api/admin/subscribe', [
   body('username').isEmail().normalizeEmail(),
   body('duration').isInt({ min: 1, max: 3650 }),
@@ -433,6 +435,43 @@ app.post('/api/admin/subscribe', [
 
   } catch (error) {
     logger.error(`Error in admin subscribe: ${error.message}`);
+    res.status(500).json({
+      error: 'Internal server error'
+    });
+  }
+});
+
+// 관리자 API - RainbowG 구독 등록
+app.post('/api/admin/rainbowg/subscribe', [
+  body('username').isEmail().normalizeEmail(),
+  body('duration').isInt({ min: 1, max: 3650 }),
+  body('adminPassword').isLength({ min: 1 })
+], async (req, res) => {
+  try {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+      return res.status(400).json({
+        error: 'Invalid input',
+        details: errors.array()
+      });
+    }
+
+    const { username, duration, adminPassword } = req.body;
+
+    // 관리자 권한 확인
+    if (!authService.verifyAdminPassword(adminPassword)) {
+      logger.warn(`Invalid admin password attempt for RainbowG`);
+      return res.status(401).json({
+        error: 'Invalid admin credentials'
+      });
+    }
+
+    const result = await firebaseService.subscribeRainbowG(username, duration);
+    logger.info(`Admin RainbowG subscription created for ${username}: ${duration} days`);
+    res.json(result);
+
+  } catch (error) {
+    logger.error(`Error in admin RainbowG subscribe: ${error.message}`);
     res.status(500).json({
       error: 'Internal server error'
     });
